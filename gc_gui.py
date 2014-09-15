@@ -334,7 +334,7 @@ class MainWindow(wx.Frame):
 
 
 app = wx.App(redirect = False)
-frame = MainWindow(None, "ARCA ground control system v0.3")
+frame = MainWindow(None, "ARCA ground control system v0.6")
 frame.Show()
 app.MainLoop()
 
