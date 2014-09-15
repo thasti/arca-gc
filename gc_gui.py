@@ -39,10 +39,13 @@ port_planeplotter = 1232
 
 # downlink TLM event types
 typeHealth = 1
-typePayload = 2
+typeData = 2
 
 # Global variable for old adsb timestamp
 oldTimestampADSB = int(time.time())
+
+# plane plotter communication (got from socket->accept())
+PPcomm = None
 
 
 EVT_RESULT_ID = wx.NewId()
@@ -70,7 +73,7 @@ class HealthReceiver(Thread):
 			udpSocketHealth = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 			udpSocketHealth.bind((ip_experiment, port_health)) 
 		except:
-			print "Could not open & bind socket"
+			print "Could not open & bind socket on port " + str(port_health)
 			return
 
 		while 1:
@@ -97,7 +100,7 @@ class PayloadReceiver(Thread):
 			udpSocketData = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 			udpSocketData.bind((ip_experiment, port_data))
 		except:
-			print "Could not open & bind socket"
+			print "Could not open & bind socket on port " + str(port_data)
 			return
 
 		while 1:
@@ -111,6 +114,29 @@ class PayloadReceiver(Thread):
 			data = rawData.split("\n")
 			wx.PostEvent(self._notify_window, ResultEvent(typeData, data))
 
+class PlanePlotterSrv(Thread):
+	def __init__(self, notify_window):
+		Thread.__init__(self)
+		self._notify_window = notify_window
+		self.start()
+
+	def run(self):
+		global PPcomm
+		try:
+			planePlotterSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			planePlotterSocket.bind((ip_planeplotter, port_planeplotter))
+			planePlotterSocket.listen(1)
+		except:
+			planePlotterSocket.close()
+			print "Could not bind to Planeplotter TCP Port"
+			return
+		while 1:
+			print "Waiting for PlanePlotter connection..."
+			PPcomm, addr = planePlotterSocket.accept()
+			print "Planeplotter connection accepted!"
+			# TODO better blocking check for broken pipe
+			PPcomm.recv(1)
+			PPcomm = None
 
 class MainWindow(wx.Frame):
 	def __init__(self, parent, title):
@@ -125,12 +151,12 @@ class MainWindow(wx.Frame):
 		x2 = 10
 		x3 = 110
 
-		wx.Frame.__init__(self, parent, title=title, size=(450, 480))
+		wx.Frame.__init__(self, parent, title=title, size=(650, 520))
 
 		self.sp = wx.SplitterWindow(self)
 		self.p1 = wx.Panel(self.sp, style = wx.SUNKEN_BORDER)
 		self.p2 = wx.Panel(self.sp, style = wx.SUNKEN_BORDER)
-		self.sp.SplitVertically(self.p1, self.p2, 300)
+		self.sp.SplitVertically(self.p1, self.p2, 350)
 
 		self.statusbar = self.CreateStatusBar()
 		self.statusbar.SetStatusText("ARCA GC system ready")
@@ -162,15 +188,16 @@ class MainWindow(wx.Frame):
 
 		experimentStatusText 	= wx.StaticText(self.p1, label = "Experiment Status", 	pos = (5, sT - dT))
 		textAlive		= wx.StaticText(self.p1, label = "Ping Answer:",	pos = (x2, (sT + dT*0)))
-		textLoad			= wx.StaticText(self.p1, label = "CPU load:", 		pos = (x2, (sT + dT*1)))
-		textTempFPGA	= wx.StaticText(self.p1, label = "Temp. FPGA:",  	pos = (x2, (sT + dT*2)))
+		textLoad		= wx.StaticText(self.p1, label = "CPU load:", 		pos = (x2, (sT + dT*1)))
+		textTempFPGA		= wx.StaticText(self.p1, label = "Temp. FPGA:",  	pos = (x2, (sT + dT*2)))
 		textTempADC		= wx.StaticText(self.p1, label = "Temp. ADC:", 		pos = (x2, (sT + dT*3)))
 		textTempETH		= wx.StaticText(self.p1, label = "Temp. ETH:",  	pos = (x2, (sT + dT*4)))
 		textTempPCB		= wx.StaticText(self.p1, label = "Temp. PCB:",   	pos = (x2, (sT + dT*5)))
 		textTempIN 		= wx.StaticText(self.p1, label = "Temp. Inside:", 	pos = (x2, (sT + dT*6)))
-		textTempOUT		= wx.StaticText(self.p1, label = "Temp. Outside:", pos = (x2, (sT + dT*7)))
-		textTime			= wx.StaticText(self.p1, label = "Last Upl. Cmd:", pos = (x2, (sT + dT*8)))
+		textTempOUT		= wx.StaticText(self.p1, label = "Temp. Outside:", 	pos = (x2, (sT + dT*7)))
+		textTime		= wx.StaticText(self.p1, label = "Last Upl. Cmd:", 	pos = (x2, (sT + dT*8)))
 		textLastCmd		= wx.StaticText(self.p1, label = "Last TLM:",		pos = (x2, (sT + dT*9)))
+		textFrameRate		= wx.StaticText(self.p1, label = "ADS-B FPS:",		pos = (x2, (sT + dT*10)))
 
 		self.showAlive		=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*0)))
 		self.showLoad		=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*1)))
@@ -183,19 +210,13 @@ class MainWindow(wx.Frame):
 		self.showTemp[5]	=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*7)))
 		self.showTime		=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*8)))
 		self.showLastCmd	=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*9)))
+		self.showFrameRate	=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*10)))
 
 		EVT_RESULT(self, self.OnIncomingTLM)
-		self.worker = HealthReceiver(self)
-		self.worker = PayloadReceiver(self)
+		self.worker1 = HealthReceiver(self)
+		self.worker2 = PayloadReceiver(self)
+		self.worker3 = PlanePlotterSrv(self)
 	
-	#	commPlaneplotter = self.setupTCPconectionPP()
-	def setupTCPconectionPP(self):
-		print "Trying to build up a connection to planeplotter"
-		planeplotterSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
-		planeplotterSocket.bind((ip_planeplotter, port_planeplotter)) 
-		planeplotterSocket.listen(1)
-		comm, addr = sock.accept()
-		return comm
 
 
 	#
@@ -215,7 +236,6 @@ class MainWindow(wx.Frame):
 		answerReset = dialReset.ShowModal()
 
 		if answerReset == wx.ID_YES:
-			print "Reset Yes"
 			self.sendUplinkCmd("RF\n")
 		else:
 			self.statusbar.SetStatusText("FPGA reset denied by user.")
@@ -231,7 +251,6 @@ class MainWindow(wx.Frame):
 		answerReboot = dialReboot.ShowModal()
 
 		if answerReboot == wx.ID_YES:
-			print "Reboot Yes"
 			self.sendUplinkCmd("RA\n")
 		else:
 			self.statusbar.SetStatusText("ARM computer reboot denied by user.")
@@ -243,7 +262,6 @@ class MainWindow(wx.Frame):
 		answerShutdown = dialShutdown.ShowModal()
 
 		if answerShutdown == wx.ID_YES:
-			print "Shutdown Yes"
 			self.sendUplinkCmd("SA\n")
 		else:
 			self.statusbar.SetStatusText("ARM computer shutdown denied by user.")
@@ -284,6 +302,8 @@ class MainWindow(wx.Frame):
 	# Telemetry packet return event
 	#
 	def OnIncomingTLM(self, event):
+		global oldTimestampADSB
+		global PPcomm
 		if event.evType == typeHealth:
 			temperatures = event.data
 			print "Health data received."
@@ -292,27 +312,25 @@ class MainWindow(wx.Frame):
 			self.showLastCmd.SetLabel("Health @ " + time.ctime(time.time()))
 			return
 		if event.evType == typeData:
-			# TODO send data to planeplotter
-
 			print "Payload data received."
-		#	adsbRawData = event.data
-
-			data = event.data.split("\n")
+			data = event.data
 			preamble = data[0].split(",")
 
 			# Read status informations about the data received
 			newTimestampADSB = int(preamble[0])
 			adsbDataCount = int(preamble[1])
 
-			adsbPacketsPerSecond = adsbDataCount / (newTimestampADSB - oldTimestampADSB)
+			# TODO use better resolution (ms, us) because packets may arrive in same second
+			#adsbPacketsPerSecond = adsbDataCount / (newTimestampADSB - oldTimestampADSB)
+			adsbPacketsPerSecond = 5
 			oldTimestampADSB = newTimestampADSB
-			self.statusbar.SetStatusText("Last ADSB data: " + str(timeLastADSBData) + "- " + str(adsbPacketsPerSecond) + "pakets/s")
+			self.showLastCmd.SetLabel("Data @ " + time.ctime(time.time()))
+			self.showFrameRate.SetLabel(str(adsbPacketsPerSecond) + " FPS")
 
 			for i in range(adsbDataCount):
-				print "*%s;\r\n\0" % data[i + 1]
 				planeplotterMessage = "*%s;\r\n\0" % data[i + 1]
-				commPlaneplotter.send(planeplotterMessage)
-
+				if PPcomm != None:
+					PPcomm.send(planeplotterMessage)
 			return
 
 

@@ -32,5 +32,5 @@ def sendHealthData():
 # UNIX Zeit in lesbares Format wandeln:
 # 	-> time.ctime(int("UNIX-Timestamp"))
 
-#sendData()
+sendData()
 sendHealthData()
