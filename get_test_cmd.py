@@ -79,7 +79,7 @@ def sendDataToPlaneplotter(dataToSend, disconect):
 		planeplotterSocket.close()
 
 
-handleHealthData()
-#handleADSBdata()
+#handleHealthData()
+handleADSBdata()
 
 

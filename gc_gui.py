@@ -1,16 +1,17 @@
 # ARCA Groundstation software.
-# This snotty little software communicates with
+# This little software communicates with
 # the experiment via UDP (downlink) and TCP (uplink).
 # Beside that it sends TCP packets to planeplotter.
-# If you dont want to hurt yourself dont read this code :-p
+# 
 # 
 # Commands:
-# 		RA\n = Reset ARM
-# 		RF\n = Reset FPGA
+# 		RA\n -> Reboot ARM
+# 		RF\n -> Reset FPGA
+#		SA\n -> Shutdown ARM
 #	optional:
-# 		GL\n = get CPU load
-# 		SY\n = sync, writes all files
-#		TU 1234\n = set new timestamp with UNIX time
+# 		GL\n -> get CPU load
+# 		SY\n -> sync, writes all files
+#		TU 1234\n -> set new timestamp with UNIX time
 # 
 #	ToDo:
 # 		- MatplotLib!
@@ -30,13 +31,19 @@ import time
 from threading import *
 
 ip_experiment = "127.0.0.1"
+ip_planeplotter = "127.0.0.1"
 port_data   = 10000
 port_health = 10001
 port_uplink = 10002
+port_planeplotter = 1232
 
 # downlink TLM event types
 typeHealth = 1
 typePayload = 2
+
+# Global variable for old adsb timestamp
+oldTimestampADSB = int(time.time())
+
 
 EVT_RESULT_ID = wx.NewId()
 
@@ -104,6 +111,7 @@ class PayloadReceiver(Thread):
 			data = rawData.split("\n")
 			wx.PostEvent(self._notify_window, ResultEvent(typeData, data))
 
+
 class MainWindow(wx.Frame):
 	def __init__(self, parent, title):
 
@@ -113,7 +121,7 @@ class MainWindow(wx.Frame):
 		dT = 20 # distance text boxes to each other
 		sB = 20 # start point of the buttons
 		sT = 250 # start point of the text
-		x = 7
+		x  = 7
 		x2 = 10
 		x3 = 110
 
@@ -125,7 +133,7 @@ class MainWindow(wx.Frame):
 		self.sp.SplitVertically(self.p1, self.p2, 300)
 
 		self.statusbar = self.CreateStatusBar()
-		self.statusbar.SetStatusText("ARCA GC system ready");
+		self.statusbar.SetStatusText("ARCA GC system ready")
 
 		text1 = wx.StaticText(self.p1, label = "Uplink commands", pos = (5, 3))
 
@@ -154,14 +162,14 @@ class MainWindow(wx.Frame):
 
 		experimentStatusText 	= wx.StaticText(self.p1, label = "Experiment Status", 	pos = (5, sT - dT))
 		textAlive		= wx.StaticText(self.p1, label = "Ping Answer:",	pos = (x2, (sT + dT*0)))
-		textLoad		= wx.StaticText(self.p1, label = "CPU load:", 		pos = (x2, (sT + dT*1)))
-		textTempFPGA		= wx.StaticText(self.p1, label = "Temp. FPGA:",  	pos = (x2, (sT + dT*2)))
+		textLoad			= wx.StaticText(self.p1, label = "CPU load:", 		pos = (x2, (sT + dT*1)))
+		textTempFPGA	= wx.StaticText(self.p1, label = "Temp. FPGA:",  	pos = (x2, (sT + dT*2)))
 		textTempADC		= wx.StaticText(self.p1, label = "Temp. ADC:", 		pos = (x2, (sT + dT*3)))
 		textTempETH		= wx.StaticText(self.p1, label = "Temp. ETH:",  	pos = (x2, (sT + dT*4)))
 		textTempPCB		= wx.StaticText(self.p1, label = "Temp. PCB:",   	pos = (x2, (sT + dT*5)))
 		textTempIN 		= wx.StaticText(self.p1, label = "Temp. Inside:", 	pos = (x2, (sT + dT*6)))
-		textTempOUT 		= wx.StaticText(self.p1, label = "Temp. Outside:", 	pos = (x2, (sT + dT*7)))
-		textTime		= wx.StaticText(self.p1, label = "Last Upl. Cmd:", 	pos = (x2, (sT + dT*8)))
+		textTempOUT		= wx.StaticText(self.p1, label = "Temp. Outside:", pos = (x2, (sT + dT*7)))
+		textTime			= wx.StaticText(self.p1, label = "Last Upl. Cmd:", pos = (x2, (sT + dT*8)))
 		textLastCmd		= wx.StaticText(self.p1, label = "Last TLM:",		pos = (x2, (sT + dT*9)))
 
 		self.showAlive		=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*0)))
@@ -179,6 +187,16 @@ class MainWindow(wx.Frame):
 		EVT_RESULT(self, self.OnIncomingTLM)
 		self.worker = HealthReceiver(self)
 		self.worker = PayloadReceiver(self)
+	
+	#	commPlaneplotter = self.setupTCPconectionPP()
+	def setupTCPconectionPP(self):
+		print "Trying to build up a connection to planeplotter"
+		planeplotterSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+		planeplotterSocket.bind((ip_planeplotter, port_planeplotter)) 
+		planeplotterSocket.listen(1)
+		comm, addr = sock.accept()
+		return comm
+
 
 	#
 	# Button events
@@ -192,12 +210,15 @@ class MainWindow(wx.Frame):
 
 
 	def fpgaReset(self, event):
-	#	dial = wx.MessageDialog(None, 'Do you really want to reset the FPGA?', 'Question', 
-	#		wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
-	#	self.YesButton.Bind(wx.EVT_BUTTON, self.dummy)
-	#	dial.ShowModal()
+		dialReset = wx.MessageDialog(None, 'Do you really want to reset the FPGA?', 'Question', wx.YES_NO |
+			wx.NO_DEFAULT | wx.ICON_QUESTION)
+		answerReset = dialReset.ShowModal()
 
-		self.sendUplinkCmd("RF\n")
+		if answerReset == wx.ID_YES:
+			print "Reset Yes"
+			self.sendUplinkCmd("RF\n")
+		else:
+			self.statusbar.SetStatusText("FPGA reset denied by user.")
 
 
 	def closeFiles(self, event):
@@ -205,14 +226,27 @@ class MainWindow(wx.Frame):
 
 
 	def reboot(self, event):
-	#	dial = wx.MessageDialog(None, 'Do you really want to reboot the ARM computer?', 'Question', 
-	#			wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
-	#	dial.ShowModal()
+		dialReboot = wx.MessageDialog(None, 'Do you really want to reboot the ARM computer?', 'Question',
+			 wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+		answerReboot = dialReboot.ShowModal()
 
-		self.sendUplinkCmd("RA\n")
+		if answerReboot == wx.ID_YES:
+			print "Reboot Yes"
+			self.sendUplinkCmd("RA\n")
+		else:
+			self.statusbar.SetStatusText("ARM computer reboot denied by user.")
+
 
 	def shutdown(self, event):
-		self.sendUplinkCmd("SA\n")
+		dialShutdown = wx.MessageDialog(None, 'Do you really want to shutdown the ARM computer?', 'Question',
+			 wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+		answerShutdown = dialShutdown.ShowModal()
+
+		if answerShutdown == wx.ID_YES:
+			print "Shutdown Yes"
+			self.sendUplinkCmd("SA\n")
+		else:
+			self.statusbar.SetStatusText("ARM computer shutdown denied by user.")
 
 
 	def getCpuLoad(self, event):
@@ -222,9 +256,11 @@ class MainWindow(wx.Frame):
 		else:
 			self.showLoad.SetLabel("N/A")
 
+
 	def setTime(self, event):
 		load = self.sendUplinkCmd("TU %s\n" % int(time.time()))
 		udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
 	#
 	# Uplink TCP command send
 	#
@@ -236,12 +272,12 @@ class MainWindow(wx.Frame):
 			reply = tcpSocket.recv(100)
 			self.showTime.SetLabel(time.ctime(time.time()))
 		except:
-			self.statusbar.SetStatusText("Cmd: " + cmd.split("\n")[0] + " - TCP connection not successful.");
+			self.statusbar.SetStatusText("Cmd: " + cmd.split("\n")[0] + " - TCP connection not successful.")
 			return None
 		finally:
 			tcpSocket.close()
 
-		self.statusbar.SetStatusText("Cmd: " + cmd.split("\n")[0] + " - Reply: " + reply.split("\n")[0]);
+		self.statusbar.SetStatusText("Cmd: " + cmd.split("\n")[0] + " - Reply: " + reply.split("\n")[0])
 		return reply
 
 	#
@@ -256,18 +292,31 @@ class MainWindow(wx.Frame):
 			self.showLastCmd.SetLabel("Health @ " + time.ctime(time.time()))
 			return
 		if event.evType == typeData:
-			print "Payload data received."
 			# TODO send data to planeplotter
-			# TODO from last time stamp, new time stamp and frames per packet calculate frames/second
-			# maybe like this:
-			# 	newtimestamp = field 1 in line 1
-			# 	field 2 (frames per packet) / (newtimestamp - oldtimestamp) = frames per second
-			# 	oldtimestamp = newtimestamp
+
+			print "Payload data received."
+		#	adsbRawData = event.data
+
+			data = event.data.split("\n")
+			preamble = data[0].split(",")
+
+			# Read status informations about the data received
+			newTimestampADSB = int(preamble[0])
+			adsbDataCount = int(preamble[1])
+
+			adsbPacketsPerSecond = adsbDataCount / (newTimestampADSB - oldTimestampADSB)
+			oldTimestampADSB = newTimestampADSB
+			self.statusbar.SetStatusText("Last ADSB data: " + str(timeLastADSBData) + "- " + str(adsbPacketsPerSecond) + "pakets/s")
+
+			for i in range(adsbDataCount):
+				print "*%s;\r\n\0" % data[i + 1]
+				planeplotterMessage = "*%s;\r\n\0" % data[i + 1]
+				commPlaneplotter.send(planeplotterMessage)
+
 			return
 
 
-
 app = wx.App(redirect = False)
-frame = MainWindow(None, "ARCA ground control system")
+frame = MainWindow(None, "ARCA ground control system v0.3")
 frame.Show()
 app.MainLoop()
