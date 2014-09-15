@@ -30,8 +30,7 @@ import socket
 import time
 from threading import *
 
-ip_experiment = "127.0.0.1"
-ip_planeplotter = "127.0.0.1"
+ip_experiment = "172.16.18.110"
 port_data   = 10000
 port_health = 10001
 port_uplink = 10002
@@ -47,6 +46,7 @@ oldTimestampADSB = int(time.time())
 # plane plotter communication (got from socket->accept())
 PPcomm = None
 
+worker = [None,None,None]
 
 EVT_RESULT_ID = wx.NewId()
 
@@ -71,7 +71,7 @@ class HealthReceiver(Thread):
 		temperatures = [0,0,0,0,0,0]
 		try:
 			udpSocketHealth = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-			udpSocketHealth.bind((ip_experiment, port_health)) 
+			udpSocketHealth.bind(("0.0.0.0", port_health)) 
 		except:
 			print "Could not open & bind socket on port " + str(port_health)
 			return
@@ -98,7 +98,7 @@ class PayloadReceiver(Thread):
 	def run(self):
 		try:
 			udpSocketData = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-			udpSocketData.bind((ip_experiment, port_data))
+			udpSocketData.bind(("0.0.0.0", port_data))
 		except:
 			print "Could not open & bind socket on port " + str(port_data)
 			return
@@ -124,7 +124,7 @@ class PlanePlotterSrv(Thread):
 		global PPcomm
 		try:
 			planePlotterSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			planePlotterSocket.bind((ip_planeplotter, port_planeplotter))
+			planePlotterSocket.bind(("0.0.0.0", port_planeplotter))
 			planePlotterSocket.listen(1)
 		except:
 			planePlotterSocket.close()
@@ -213,10 +213,10 @@ class MainWindow(wx.Frame):
 		self.showFrameRate	=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*10)))
 
 		EVT_RESULT(self, self.OnIncomingTLM)
-		self.worker1 = HealthReceiver(self)
-		self.worker2 = PayloadReceiver(self)
-		self.worker3 = PlanePlotterSrv(self)
-	
+		global worker
+		worker[0] = HealthReceiver(self)
+		worker[1] = PayloadReceiver(self)
+		worker[2] = PlanePlotterSrv(self)
 
 
 	#
@@ -338,3 +338,7 @@ app = wx.App(redirect = False)
 frame = MainWindow(None, "ARCA ground control system v0.3")
 frame.Show()
 app.MainLoop()
+
+for n in range(3):
+	# TODO find terminating function call
+	pass
