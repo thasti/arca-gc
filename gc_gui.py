@@ -317,15 +317,14 @@ class MainWindow(wx.Frame):
 			preamble = data[0].split(",")
 
 			# Read status informations about the data received
-			newTimestampADSB = int(preamble[0])
+			newTimestampADSB = time.time()
 			adsbDataCount = int(preamble[1])
 
 			# TODO use better resolution (ms, us) because packets may arrive in same second
-			#adsbPacketsPerSecond = adsbDataCount / (newTimestampADSB - oldTimestampADSB)
-			adsbPacketsPerSecond = 5
+			adsbPacketsPerSecond = adsbDataCount / (newTimestampADSB - oldTimestampADSB)
 			oldTimestampADSB = newTimestampADSB
 			self.showLastCmd.SetLabel("Data @ " + time.ctime(time.time()))
-			self.showFrameRate.SetLabel(str(adsbPacketsPerSecond) + " FPS")
+			self.showFrameRate.SetLabel(str(int(adsbPacketsPerSecond)) + " FPS")
 
 			for i in range(adsbDataCount):
 				planeplotterMessage = "*%s;\r\n\0" % data[i + 1]
