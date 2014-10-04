@@ -14,7 +14,6 @@
 #		TU 1234\n -> set new timestamp with UNIX time
 # 
 #	ToDo:
-# 		- MatplotLib!
 #		- TCP send in Funktionen
 #		- Dialoge behandeln "Wirklich reseten?"
 #
@@ -151,31 +150,26 @@ class MainWindow(wx.Frame):
 		x2 = 10
 		x3 = 110
 
-		wx.Frame.__init__(self, parent, title=title, size=(650, 520))
-
-		self.sp = wx.SplitterWindow(self)
-		self.p1 = wx.Panel(self.sp, style = wx.SUNKEN_BORDER)
-		self.p2 = wx.Panel(self.sp, style = wx.SUNKEN_BORDER)
-		self.sp.SplitVertically(self.p1, self.p2, 350)
+		wx.Frame.__init__(self, parent, title=title, size=(350, 520))
 
 		self.statusbar = self.CreateStatusBar()
 		self.statusbar.SetStatusText("ARCA GC system ready")
 
-		text1 = wx.StaticText(self.p1, label = "Uplink commands", pos = (5, 3))
+		text1 = wx.StaticText(self, label = "Uplink commands", pos = (5, 3))
 
-		self.getAliveSignalButton = wx.Button(self.p1, -1, "Ping experiment", \
+		self.getAliveSignalButton = wx.Button(self, -1, "Ping experiment", \
 				size = (bWidth, bHeight), pos = (x, sB + dB*0))
-		self.fpgaResetButton = wx.Button(self.p1, -1, "Hard Reset FPGA", \
+		self.fpgaResetButton = wx.Button(self, -1, "Hard Reset FPGA", \
 				size = (bWidth, bHeight), pos = (x, (sB + dB*1)))
-		self.rebootButton = wx.Button(self.p1, -1, "Hard Reset ARM", \
+		self.rebootButton = wx.Button(self, -1, "Hard Reset ARM", \
 				size = (bWidth, bHeight), pos = (x, (sB + dB*2)))
-		self.shutdownButton = wx.Button(self.p1, -1, "Shutdown ARM", \
+		self.shutdownButton = wx.Button(self, -1, "Shutdown ARM", \
 				size = (bWidth, bHeight), pos = (x, (sB + dB*3)))
-		self.closeFilesButton = wx.Button(self.p1, -1, "Sync filesystem", \
+		self.closeFilesButton = wx.Button(self, -1, "Sync filesystem", \
 				size = (bWidth, bHeight), pos = (x,(sB + dB*4)))
-		self.getCpuLoadButton = wx.Button(self.p1, -1, "Get CPU load", \
+		self.getCpuLoadButton = wx.Button(self, -1, "Get CPU load", \
 				size = (bWidth, bHeight), pos = (x, (sB + dB*5)))
-		self.setNewTimeButton = wx.Button(self.p1, -1, "Upload time", \
+		self.setNewTimeButton = wx.Button(self, -1, "Upload time", \
 				size = (bWidth, bHeight), pos = (x, (sB + dB*6)))
 
 		self.getAliveSignalButton.Bind(wx.EVT_BUTTON, self.getAliveSignal)
@@ -186,31 +180,31 @@ class MainWindow(wx.Frame):
 		self.rebootButton.Bind(wx.EVT_BUTTON, self.reboot)
 		self.shutdownButton.Bind(wx.EVT_BUTTON, self.shutdown)
 
-		experimentStatusText 	= wx.StaticText(self.p1, label = "Experiment Status", 	pos = (5, sT - dT))
-		textAlive		= wx.StaticText(self.p1, label = "Ping Answer:",	pos = (x2, (sT + dT*0)))
-		textLoad		= wx.StaticText(self.p1, label = "CPU load:", 		pos = (x2, (sT + dT*1)))
-		textTempFPGA		= wx.StaticText(self.p1, label = "Temp. FPGA:",  	pos = (x2, (sT + dT*2)))
-		textTempADC		= wx.StaticText(self.p1, label = "Temp. ADC:", 		pos = (x2, (sT + dT*3)))
-		textTempETH		= wx.StaticText(self.p1, label = "Temp. ETH:",  	pos = (x2, (sT + dT*4)))
-		textTempPCB		= wx.StaticText(self.p1, label = "Temp. PCB:",   	pos = (x2, (sT + dT*5)))
-		textTempIN 		= wx.StaticText(self.p1, label = "Temp. Inside:", 	pos = (x2, (sT + dT*6)))
-		textTempOUT		= wx.StaticText(self.p1, label = "Temp. Outside:", 	pos = (x2, (sT + dT*7)))
-		textTime		= wx.StaticText(self.p1, label = "Last Upl. Cmd:", 	pos = (x2, (sT + dT*8)))
-		textLastCmd		= wx.StaticText(self.p1, label = "Last TLM:",		pos = (x2, (sT + dT*9)))
-		textFrameRate		= wx.StaticText(self.p1, label = "ADS-B FPS:",		pos = (x2, (sT + dT*10)))
+		experimentStatusText 	= wx.StaticText(self, label = "Experiment Status", 	pos = (5, sT - dT))
+		textAlive		= wx.StaticText(self, label = "Ping Answer:",	pos = (x2, (sT + dT*0)))
+		textLoad		= wx.StaticText(self, label = "CPU load:", 		pos = (x2, (sT + dT*1)))
+		textTempFPGA		= wx.StaticText(self, label = "Temp. FPGA:",  	pos = (x2, (sT + dT*2)))
+		textTempADC		= wx.StaticText(self, label = "Temp. ADC:", 		pos = (x2, (sT + dT*3)))
+		textTempETH		= wx.StaticText(self, label = "Temp. ETH:",  	pos = (x2, (sT + dT*4)))
+		textTempPCB		= wx.StaticText(self, label = "Temp. PCB:",   	pos = (x2, (sT + dT*5)))
+		textTempIN 		= wx.StaticText(self, label = "Temp. Inside:", 	pos = (x2, (sT + dT*6)))
+		textTempOUT		= wx.StaticText(self, label = "Temp. Outside:", 	pos = (x2, (sT + dT*7)))
+		textTime		= wx.StaticText(self, label = "Last Upl. Cmd:", 	pos = (x2, (sT + dT*8)))
+		textLastCmd		= wx.StaticText(self, label = "Last TLM:",		pos = (x2, (sT + dT*9)))
+		textFrameRate		= wx.StaticText(self, label = "ADS-B FPS:",		pos = (x2, (sT + dT*10)))
 
-		self.showAlive		=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*0)))
-		self.showLoad		=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*1)))
+		self.showAlive		=  wx.StaticText(self, label = "-", pos = (x3, (sT + dT*0)))
+		self.showLoad		=  wx.StaticText(self, label = "-", pos = (x3, (sT + dT*1)))
 		self.showTemp = [0,0,0,0,0,0]
-		self.showTemp[0]	=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*2)))
-		self.showTemp[1]	=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*3)))
-		self.showTemp[2]	=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*4)))
-		self.showTemp[3]	=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*5)))
-		self.showTemp[4]	=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*6)))
-		self.showTemp[5]	=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*7)))
-		self.showTime		=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*8)))
-		self.showLastCmd	=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*9)))
-		self.showFrameRate	=  wx.StaticText(self.p1, label = "-", pos = (x3, (sT + dT*10)))
+		self.showTemp[0]	=  wx.StaticText(self, label = "-", pos = (x3, (sT + dT*2)))
+		self.showTemp[1]	=  wx.StaticText(self, label = "-", pos = (x3, (sT + dT*3)))
+		self.showTemp[2]	=  wx.StaticText(self, label = "-", pos = (x3, (sT + dT*4)))
+		self.showTemp[3]	=  wx.StaticText(self, label = "-", pos = (x3, (sT + dT*5)))
+		self.showTemp[4]	=  wx.StaticText(self, label = "-", pos = (x3, (sT + dT*6)))
+		self.showTemp[5]	=  wx.StaticText(self, label = "-", pos = (x3, (sT + dT*7)))
+		self.showTime		=  wx.StaticText(self, label = "-", pos = (x3, (sT + dT*8)))
+		self.showLastCmd	=  wx.StaticText(self, label = "-", pos = (x3, (sT + dT*9)))
+		self.showFrameRate	=  wx.StaticText(self, label = "-", pos = (x3, (sT + dT*10)))
 
 		EVT_RESULT(self, self.OnIncomingTLM)
 		global worker
@@ -306,13 +300,13 @@ class MainWindow(wx.Frame):
 		global PPcomm
 		if event.evType == typeHealth:
 			temperatures = event.data
-			print "Health data received."
+			#print "Health data received."
 			for i in range(6):
 				self.showTemp[i].SetLabel(str(temperatures[i]))
 			self.showLastCmd.SetLabel("Health @ " + time.ctime(time.time()))
 			return
 		if event.evType == typeData:
-			print "Payload data received."
+			#print "Payload data received."
 			data = event.data
 			preamble = data[0].split(",")
 
