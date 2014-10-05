@@ -164,17 +164,17 @@ class MainWindow(wx.Frame):
 		dB = 30 # distance Buttons to each other
 		dT = 20 # distance text boxes to each other
 		sB = 20 # start point of the buttons
-		sT = 290 # start point of the text
+		sT = 270 # start point of the text
 		x  = 7
 		x2 = 10
 		x3 = 110
 
-		wx.Frame.__init__(self, parent, title=title, size=(350, 570))
+		wx.Frame.__init__(self, parent, title=title, size=(350, 540))
 
 		self.statusbar = self.CreateStatusBar()
 		self.statusbar.SetStatusText("ARCA GC system ready")
 
-		text1 = wx.StaticText(self, label = "Uplink commands", pos = (5, 3))
+		text1 = wx.StaticText(self, label = "Uplink commands:", pos = (5, 3))
 
 		self.getAliveSignalButton = wx.Button(self, -1, "Ping experiment", \
 				size = (bWidth, bHeight), pos = (x, sB + dB*0))
@@ -199,7 +199,7 @@ class MainWindow(wx.Frame):
 		self.rebootButton.Bind(wx.EVT_BUTTON, self.reboot)
 		self.shutdownButton.Bind(wx.EVT_BUTTON, self.shutdown)
 
-		experimentStatusText 	= wx.StaticText(self, label = "Experiment Status", 	pos = (5, sT - dT))
+		experimentStatusText 	= wx.StaticText(self, label = "Experiment Status:", 	pos = (5, sT - dT))
 		textAlive		= wx.StaticText(self, label = "Ping Answer:",	pos = (x2, (sT + dT*0)))
 		textLoad			= wx.StaticText(self, label = "CPU load:", 		pos = (x2, (sT + dT*1)))
 		textTempFPGA	= wx.StaticText(self, label = "Temp. FPGA:",  	pos = (x2, (sT + dT*2)))
