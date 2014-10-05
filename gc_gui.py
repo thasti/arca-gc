@@ -85,15 +85,13 @@ class HealthReceiver(Thread):
 				print "Health Thread exception"
 				return
 
+			# Writing health data to a local file
+			fileObjectHealth.write(rawHealthData)
+			fileObjectHealth.flush()
+
 			healthData = rawHealthData.split(",")
 			for n in range(6):
-				temperatures[n] = float(healthData[n + 1]) / 1000
-				# Writing data to file
-				if(n == 5):
-					fileObjectHealth.write(healthData[n] + "\n")
-				else:
-					fileObjectHealth.write(healthData[n] + ",")						
-			fileObjectHealth.flush()
+				temperatures[n] = float(healthData[n + 1]) / 1000		
 			wx.PostEvent(self._notify_window, ResultEvent(typeHealth, temperatures))
 
 class PayloadReceiver(Thread):
