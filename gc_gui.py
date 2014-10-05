@@ -71,6 +71,8 @@ class HealthReceiver(Thread):
 		try:
 			udpSocketHealth = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 			udpSocketHealth.bind(("0.0.0.0", port_health)) 
+			filenameHealth = "Health_Data_%s.csv" % int(time.time())
+			fileObjectHealth = open(filenameHealth, "w")
 		except:
 			print "Could not open & bind socket on port " + str(port_health)
 			return
@@ -82,13 +84,20 @@ class HealthReceiver(Thread):
 				udpSocketHealth.close()
 				print "Health Thread exception"
 				return
-			# TODO: write rawHealthData to to file
+
 			healthData = rawHealthData.split(",")
 			for n in range(6):
 				temperatures[n] = float(healthData[n + 1]) / 1000
+				# Writing data to file
+				if(n == 5):
+					fileObjectHealth.write(healthData[n] + "\n")
+				else:
+					fileObjectHealth.write(healthData[n] + ",")						
+			fileObjectHealth.flush()
 			wx.PostEvent(self._notify_window, ResultEvent(typeHealth, temperatures))
 
 class PayloadReceiver(Thread):
+
 	def __init__(self, notify_window):
 		Thread.__init__(self)
 		self._notify_window = notify_window
@@ -98,6 +107,8 @@ class PayloadReceiver(Thread):
 		try:
 			udpSocketData = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 			udpSocketData.bind(("0.0.0.0", port_data))
+			filenamePayload = "Payload_Data_%s.csv" % int(time.time())
+			fileObjectPayload = open(filenamePayload, "w") 
 		except:
 			print "Could not open & bind socket on port " + str(port_data)
 			return
@@ -109,8 +120,16 @@ class PayloadReceiver(Thread):
 				udpSocketHealth.close()
 				print "Data Thread exception"
 				return
-			# TODO: write rawData to to file
+
 			data = rawData.split("\n")
+			preamble = data[0].split(",")
+
+			fileObjectPayload.write(preamble[0] + "," + preamble[1])
+			for i in range(int(preamble[1])):
+				fileObjectPayload.write("," + data[i + 1])
+			fileObjectPayload.write("\n")
+			fileObjectPayload.flush()
+
 			wx.PostEvent(self._notify_window, ResultEvent(typeData, data))
 
 class PlanePlotterSrv(Thread):
@@ -145,12 +164,12 @@ class MainWindow(wx.Frame):
 		dB = 30 # distance Buttons to each other
 		dT = 20 # distance text boxes to each other
 		sB = 20 # start point of the buttons
-		sT = 250 # start point of the text
+		sT = 290 # start point of the text
 		x  = 7
 		x2 = 10
 		x3 = 110
 
-		wx.Frame.__init__(self, parent, title=title, size=(350, 520))
+		wx.Frame.__init__(self, parent, title=title, size=(350, 570))
 
 		self.statusbar = self.CreateStatusBar()
 		self.statusbar.SetStatusText("ARCA GC system ready")
@@ -182,16 +201,16 @@ class MainWindow(wx.Frame):
 
 		experimentStatusText 	= wx.StaticText(self, label = "Experiment Status", 	pos = (5, sT - dT))
 		textAlive		= wx.StaticText(self, label = "Ping Answer:",	pos = (x2, (sT + dT*0)))
-		textLoad		= wx.StaticText(self, label = "CPU load:", 		pos = (x2, (sT + dT*1)))
-		textTempFPGA		= wx.StaticText(self, label = "Temp. FPGA:",  	pos = (x2, (sT + dT*2)))
+		textLoad			= wx.StaticText(self, label = "CPU load:", 		pos = (x2, (sT + dT*1)))
+		textTempFPGA	= wx.StaticText(self, label = "Temp. FPGA:",  	pos = (x2, (sT + dT*2)))
 		textTempADC		= wx.StaticText(self, label = "Temp. ADC:", 		pos = (x2, (sT + dT*3)))
 		textTempETH		= wx.StaticText(self, label = "Temp. ETH:",  	pos = (x2, (sT + dT*4)))
 		textTempPCB		= wx.StaticText(self, label = "Temp. PCB:",   	pos = (x2, (sT + dT*5)))
 		textTempIN 		= wx.StaticText(self, label = "Temp. Inside:", 	pos = (x2, (sT + dT*6)))
 		textTempOUT		= wx.StaticText(self, label = "Temp. Outside:", 	pos = (x2, (sT + dT*7)))
-		textTime		= wx.StaticText(self, label = "Last Upl. Cmd:", 	pos = (x2, (sT + dT*8)))
+		textTime			= wx.StaticText(self, label = "Last Upl. Cmd:", 	pos = (x2, (sT + dT*8)))
 		textLastCmd		= wx.StaticText(self, label = "Last TLM:",		pos = (x2, (sT + dT*9)))
-		textFrameRate		= wx.StaticText(self, label = "ADS-B FPS:",		pos = (x2, (sT + dT*10)))
+		textFrameRate	= wx.StaticText(self, label = "ADS-B FPS:",		pos = (x2, (sT + dT*10)))
 
 		self.showAlive		=  wx.StaticText(self, label = "-", pos = (x3, (sT + dT*0)))
 		self.showLoad		=  wx.StaticText(self, label = "-", pos = (x3, (sT + dT*1)))
@@ -273,6 +292,7 @@ class MainWindow(wx.Frame):
 		load = self.sendUplinkCmd("TU %s\n" % int(time.time()))
 		udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+
 	#
 	# Uplink TCP command send
 	#
@@ -328,7 +348,7 @@ class MainWindow(wx.Frame):
 
 
 app = wx.App(redirect = False)
-frame = MainWindow(None, "ARCA ground control system v0.6")
+frame = MainWindow(None, "ARCA ground control system v0.7")
 frame.Show()
 app.MainLoop()
 
